@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WebAR 2.5D Parallax Demo</title>
+
+  <!-- three.js 全局版（不需要 import） -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+  <!-- MindAR（three 版本，稳定的 1.1.4） -->
+  <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.1.4/dist/mindar-image-three.prod.js"></script>
+
+  <style>
+    html, body { margin:0; padding:0; overflow:hidden; background:#111; }
+    #ui{
+      position:fixed; left:50%; top:50%;
+      transform:translate(-50%,-50%);
+      z-index:10; text-align:center; color:#fff;
+      font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      width: 320px;
+    }
+    #btn{
+      padding:14px 18px; font-size:16px;
+      border-radius:12px; border:0;
+      background:#fff; color:#111; cursor:pointer;
+      width: 100%;
+    }
+    #status{
+      margin-top:12px; font-size:14px;
+      opacity:.9; white-space:pre-wrap;
+      line-height: 1.4;
+      text-shadow: 0 1px 3px rgba(0,0,0,.6);
+    }
+    #tip{
+      margin-top:10px;
+      font-size:12px;
+      opacity:.7;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="ui">
+    <button id="btn">点击开始扫描</button>
+    <div id="status">状态：等待点击</div>
+    <div id="tip">
+      请对准你编译 scene.mind 时用的那张目标图（建议无大字版本更稳）
+    </div>
+  </div>
+
+  <script>
+    const btn = document.getElementById("btn");
+    const statusEl = document.getElementById("status");
+    const setStatus = (s) => { statusEl.textContent = "状态：" + s; console.log(s); };
+
+    // 你的素材分辨率：1365 x 2048
+    const IMG_W = 1365;
+    const IMG_H = 2048;
+    const aspect = IMG_W / IMG_H;  // 宽/高 ≈ 0.6665
+
+    // 2.5D 平面物理宽度（单位任意，整体比例会跟着走）
+    const W = 1.0;
+    const H = W / aspect;
+
+    // 全局引用（方便在动画里访问）
+    let mindarThree, renderer, scene, camera;
+    let anchor;
+    let carMesh = null;
+    let peopleMesh = null;
+
+    setStatus("页面已加载，等待点击。");
+
+    btn.onclick = async () => {
+      btn.disabled = true;
+      setStatus("已点击，正在启动 AR...");
+
+      try {
+        mindarThree = new window.MINDAR.IMAGE.MindARThree({
+          container: document.body,
+          imageTargetSrc: "./targets/scene.mind",
+        });
+
+        ({ renderer, scene, camera } = mindarThree);
+
+        // 识别到第 0 张 target 时显示内容
+        anchor = mindarThree.addAnchor(0);
+
+        const loader = new THREE.TextureLoader();
+
+        // 创建一层（透明叠层）
+        function makeLayer(url, z, opts = {}) {
+          const t = loader.load(url);
+          t.colorSpace = THREE.SRGBColorSpace;
+
+          const g = new THREE.PlaneGeometry(W, H);
+          const m = new THREE.MeshBasicMaterial({
+            map: t,
+            transparent: true,
+            depthWrite: false,
+            ...opts,
+          });
+
+          const mesh = new THREE.Mesh(g, m);
+          mesh.position.z = z;
+          return mesh;
+        }
+
+        // ===== 4 层视差 =====
+        const group = new THREE.Group();
+        group.add(makeLayer("./assets/bg.png",   -0.10));
+        group.add(makeLayer("./assets/mid.png",  -0.05));
+        group.add(makeLayer("./assets/main.png",  0.00));
+        group.add(makeLayer("./assets/fg.png",    0.06));
+
+        // 如果你觉得整体偏大/偏小，在这里调 scale（0.9~1.1）
+        // 例如：group.scale.set(0.98, 0.98, 0.98);
+
+        anchor.group.add(group);
+
+        // ===== 动态层：车 =====
+        // 车层通常应比 main 更靠前，但比 fg 稍靠后，避免遮挡怪
+        carMesh = makeLayer("./assets/cars.png", 0.02);
+        anchor.group.add(carMesh);
+
+        // ===== 动态层：人 =====
+        peopleMesh = makeLayer("./assets/people.png", 0.04);
+        anchor.group.add(peopleMesh);
+
+        // 启动 AR
+        await mindarThree.start();
+        setStatus("AR 已启动 ✅ 请对准目标图");
+        document.getElementById("ui").style.display = "none";
+
+        // ===== 动画循环 =====
+        let t = 0;
+        renderer.setAnimationLoop(() => {
+          t += 0.02;
+
+          // 车轻微左右移动（你可改速度/幅度）
+          if (carMesh) {
+            carMesh.position.x = Math.sin(t * 0.6) * 0.06;
+          }
+
+          // 人轻微摆动（很小的角度更自然）
+          if (peopleMesh) {
+            peopleMesh.rotation.z = Math.sin(t) * 0.01;
+          }
+
+          renderer.render(scene, camera);
+        });
+
+      } catch (err) {
+        console.error(err);
+        setStatus("启动失败 ❌\n" + (err?.message || err));
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
