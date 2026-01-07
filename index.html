@@ -1,27 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>AR Video</title>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
+
   <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    #startBtn {
+      position: fixed; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      padding: 14px 18px;
+      font-size: 16px;
+      z-index: 9999;
+    }
+    #hint {
+      position: fixed; left: 50%; bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      color: #fff; padding: 8px 12px; border-radius: 10px;
+      font-size: 14px; z-index: 9999;
+    }
+  </style>
 </head>
 
 <body style="margin:0; overflow:hidden;">
+  <button id="startBtn">Tap to Start</button>
+  <div id="hint">Point your camera at the image — the video will play when detected.</div>
+
   <a-scene
     mindar-image="imageTargetSrc: targets.mind;"
     vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: true">
+    device-orientation-permission-ui="enabled: true"
+    renderer="colorManagement: true;">
 
     <a-assets>
-      <video id="video" src="video.mp4"
-             autoplay loop muted playsinline></video>
+      <!-- Chrome更稳：preload + muted + playsinline -->
+      <video id="video"
+             src="video.mp4"
+             preload="auto"
+             loop
+             muted
+             playsinline
+             webkit-playsinline
+             crossorigin="anonymous">
+      </video>
     </a-assets>
 
-    <!-- 视频贴在识别图上 -->
-    <a-entity mindar-image-target="targetIndex: 0">
+    <a-entity id="marker" mindar-image-target="targetIndex: 0">
       <a-video
+        id="videoPlane"
         src="#video"
         width="1"
         height="0.56"
@@ -32,5 +61,46 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
   </a-scene>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const hint = document.getElementById('hint');
+    const video = document.getElementById('video');
+    const marker = document.getElementById('marker');
+
+    let started = false;
+
+    async function tryPlay() {
+      // 关键：强制从0开始 + play()
+      try { video.currentTime = 0; } catch (e) {}
+      try {
+        const p = video.play();
+        if (p && typeof p.then === 'function') await p;
+      } catch (e) {
+        // 如果浏览器还是拦截，会继续需要用户点击
+      }
+    }
+
+    startBtn.addEventListener('click', async () => {
+      started = true;
+      startBtn.style.display = 'none';
+      hint.textContent = 'Scanning… Point at the image.';
+      await tryPlay();     // 用户手势触发一次播放权限
+      video.pause();       // 先暂停，等识别到再播更自然
+    });
+
+    // 识别到目标时播放，丢失目标时暂停（更像“贴在图上”）
+    marker.addEventListener('targetFound', async () => {
+      if (!started) return;
+      hint.textContent = 'Detected! Playing…';
+      await tryPlay();
+    });
+
+    marker.addEventListener('targetLost', () => {
+      if (!started) return;
+      video.pause();
+      hint.textContent = 'Lost tracking — point at the image again.';
+    });
+  </script>
 </body>
 </html>
