@@ -8,19 +8,23 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    #startBtn {
-      position: fixed; left: 50%; top: 50%;
-      transform: translate(-50%, -50%);
-      padding: 14px 18px;
-      font-size: 16px;
-      z-index: 9999;
+    #startBtn{
+      position:fixed;left:50%;top:50%;
+      transform:translate(-50%,-50%);
+      padding:14px 18px;font-size:16px;z-index:9999;
     }
-    #hint {
-      position: fixed; left: 50%; bottom: 18px;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.55);
-      color: #fff; padding: 8px 12px; border-radius: 10px;
-      font-size: 14px; z-index: 9999;
+    #hint{
+      position:fixed;left:50%;bottom:18px;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.55);color:#fff;
+      padding:8px 12px;border-radius:10px;
+      font-size:14px;z-index:9999;
+    }
+    #dbg{
+      position:fixed;left:10px;top:10px;
+      background:rgba(0,0,0,.55);color:#fff;
+      padding:6px 8px;border-radius:8px;
+      font-size:12px;z-index:9999;
     }
   </style>
 </head>
@@ -28,72 +32,75 @@
 <body style="margin:0; overflow:hidden;">
   <button id="startBtn">Tap to Start</button>
   <div id="hint">Point your camera at the image — the video will play when detected.</div>
+  <div id="dbg">t=0.00</div>
 
   <a-scene
     mindar-image="imageTargetSrc: targets.mind;"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: true"
-    renderer="colorManagement: true;">
+    renderer="colorManagement: true; physicallyCorrectLights: false;">
 
     <a-assets>
-      <!-- Chrome更稳：preload + muted + playsinline -->
       <video id="video"
-             src="video.mp4"
-             preload="auto"
-             loop
-             muted
-             playsinline
-             webkit-playsinline
-             crossorigin="anonymous">
-      </video>
+        src="video.mp4"
+        preload="auto"
+        loop
+        muted
+        playsinline
+        webkit-playsinline
+        crossorigin="anonymous"></video>
     </a-assets>
 
     <a-entity id="marker" mindar-image-target="targetIndex: 0">
-      <a-video
-        id="videoPlane"
-        src="#video"
+      <!-- 用 plane 贴 video texture（比 a-video 更稳） -->
+      <a-plane id="screen"
         width="1"
         height="0.56"
         position="0 0 0"
-        rotation="0 0 0">
-      </a-video>
+        rotation="0 0 0"
+        material="shader: flat; src: #video; transparent: true;">
+      </a-plane>
     </a-entity>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
   </a-scene>
 
   <script>
     const startBtn = document.getElementById('startBtn');
     const hint = document.getElementById('hint');
+    const dbg = document.getElementById('dbg');
     const video = document.getElementById('video');
     const marker = document.getElementById('marker');
 
     let started = false;
 
-    async function tryPlay() {
-      // 关键：强制从0开始 + play()
-      try { video.currentTime = 0; } catch (e) {}
+    async function forcePlay() {
+      try { video.muted = true; } catch(e){}
+      try { video.currentTime = 0; } catch(e){}
       try {
         const p = video.play();
         if (p && typeof p.then === 'function') await p;
-      } catch (e) {
-        // 如果浏览器还是拦截，会继续需要用户点击
-      }
+      } catch (e) {}
     }
+
+    // Debug：看 currentTime 是否增长
+    setInterval(() => {
+      dbg.textContent = `t=${(video.currentTime || 0).toFixed(2)}  ready=${video.readyState}`;
+    }, 200);
 
     startBtn.addEventListener('click', async () => {
       started = true;
       startBtn.style.display = 'none';
       hint.textContent = 'Scanning… Point at the image.';
-      await tryPlay();     // 用户手势触发一次播放权限
-      video.pause();       // 先暂停，等识别到再播更自然
+      // 用用户手势解锁播放权限
+      await forcePlay();
+      video.pause();
     });
 
-    // 识别到目标时播放，丢失目标时暂停（更像“贴在图上”）
     marker.addEventListener('targetFound', async () => {
       if (!started) return;
       hint.textContent = 'Detected! Playing…';
-      await tryPlay();
+      await forcePlay();
     });
 
     marker.addEventListener('targetLost', () => {
