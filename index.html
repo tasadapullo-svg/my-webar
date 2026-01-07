@@ -10,36 +10,26 @@
 
   <style>
     #startBtn{
-      position:fixed; left:50%; top:50%;
+      position:fixed;left:50%;top:50%;
       transform:translate(-50%,-50%);
-      padding:14px 18px; font-size:16px; z-index:9999;
+      padding:14px 18px;font-size:16px;z-index:9999;
     }
     #hint{
-      position:fixed; left:50%; bottom:18px;
+      position:fixed;left:50%;bottom:18px;
       transform:translateX(-50%);
-      background:rgba(0,0,0,.60); color:#fff;
-      padding:10px 14px; border-radius:10px;
-      font-size:14px; z-index:9999;
-      text-align:center; max-width: 92vw;
+      background:rgba(0,0,0,.60);color:#fff;
+      padding:10px 14px;border-radius:10px;
+      font-size:14px;z-index:9999;text-align:center;
+      max-width: 92vw;
     }
     #err{
       display:none;
-      position:fixed; left:50%; top:18px;
+      position:fixed;left:50%;top:18px;
       transform:translateX(-50%);
-      background:rgba(180,0,0,.75); color:#fff;
-      padding:10px 14px; border-radius:10px;
-      font-size:13px; z-index:10000;
-      max-width: 92vw; white-space: pre-wrap;
-    }
-    #picker{
-      position:fixed; left:12px; bottom:72px;
-      z-index:10001;
-      background:rgba(0,0,0,.55);
-      color:#fff; border-radius:10px;
-      padding:8px 10px; font-size:13px;
-    }
-    #picker select{
-      font-size:13px;
+      background:rgba(180,0,0,.75);color:#fff;
+      padding:10px 14px;border-radius:10px;
+      font-size:13px;z-index:10000;
+      max-width: 92vw;white-space:pre-wrap;
     }
   </style>
 </head>
@@ -49,20 +39,15 @@
   <button id="startBtn">Tap to Start</button>
   <div id="hint">Tap to start, then point your camera at a target image.</div>
 
-  <!-- 可选：手动选择当前要扫哪一张（强烈推荐，最稳，不会扫错） -->
-  <div id="picker" style="display:none;">
-    Target:
-    <select id="targetSelect"></select>
-  </div>
-
   <a-scene
     id="scene"
-    mindar-image="imageTargetSrc: 0.mind; maxTrack: 1;"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: true"
-    renderer="colorManagement: true; physicallyCorrectLights: false;">
+    mindar-image="imageTargetSrc: targets.mind; maxTrack: 1;"
+    vr-mode-ui="enabled:false"
+    device-orientation-permission-ui="enabled:true"
+    renderer="colorManagement:true; physicallyCorrectLights:false;">
 
     <a-assets>
+      <!-- 单一 video：识别到哪个 target 就切换 src -->
       <video id="arVideo"
         preload="auto"
         loop
@@ -72,57 +57,52 @@
         x5-playsinline
         x5-video-player-type="h5"
         x5-video-player-fullscreen="false"
-        crossorigin="anonymous">
-      </video>
+        crossorigin="anonymous"></video>
     </a-assets>
 
-    <a-entity id="marker" mindar-image-target="targetIndex: 0">
-      <a-plane id="screen"
-        width="1"
-        height="0.56"
-        material="shader: flat; src: #arVideo; transparent: true;">
-      </a-plane>
-    </a-entity>
+    <!-- 10 targets：每个 target 里放一个 plane，显示同一个 video 纹理 -->
+    <a-entity id="t0" mindar-image-target="targetIndex: 0"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t1" mindar-image-target="targetIndex: 1"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t2" mindar-image-target="targetIndex: 2"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t3" mindar-image-target="targetIndex: 3"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t4" mindar-image-target="targetIndex: 4"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t5" mindar-image-target="targetIndex: 5"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t6" mindar-image-target="targetIndex: 6"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t7" mindar-image-target="targetIndex: 7"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t8" mindar-image-target="targetIndex: 8"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t9" mindar-image-target="targetIndex: 9"><a-plane width="1" height="0.56" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
 
     <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
   </a-scene>
 
   <script>
-    // 你的文件：0.mind~9.mind 对应 0.mp4~9.mp4
-    const PAIRS = Array.from({length: 10}, (_, i) => ({
-      mind: `${i}.mind`,
-      video: `${i}.mp4`,
-      name: `Target ${i}`
-    }));
+    // 0.mp4 ~ 9.mp4
+    const VIDEO_FILES = ["0.mp4","1.mp4","2.mp4","3.mp4","4.mp4","5.mp4","6.mp4","7.mp4","8.mp4","9.mp4"];
 
-    const scene = document.getElementById('scene');
     const startBtn = document.getElementById('startBtn');
     const hint = document.getElementById('hint');
     const err = document.getElementById('err');
     const video = document.getElementById('arVideo');
 
-    const picker = document.getElementById('picker');
-    const targetSelect = document.getElementById('targetSelect');
-
     let started = false;
-    let current = 0;
+    let activeIndex = null;
     let switching = false;
 
-    function showError(msg){
-      err.style.display = 'block';
-      err.textContent = msg;
-    }
+    // 防抖：海报上多图时更稳（避免目标抖动导致疯狂切换）
+    let lastSwitchAt = 0;
+    const SWITCH_COOLDOWN_MS = 800;
 
-    function pauseVideo(){ try { video.pause(); } catch(e){} }
+    function showError(msg){ err.style.display='block'; err.textContent=msg; }
+    function pauseVideo(){ try{ video.pause(); }catch(e){} }
 
-    async function loadAndPlayVideo(src){
+    async function loadAndPlay(src){
       return new Promise((resolve, reject) => {
         const onCanPlay = async () => {
           cleanup();
-          try { video.currentTime = 0; } catch(e){}
+          try { video.currentTime = 0; } catch(e) {}
           try {
             const p = video.play();
-            if (p && typeof p.then === 'function') await p;
+            if (p && typeof p.then === "function") await p;
             resolve();
           } catch(e) { reject(e); }
         };
@@ -141,16 +121,54 @@
       });
     }
 
-    // MindAR 切换 mind 文件时，需要重新初始化场景
-    async function switchTarget(newIndex){
-      if (switching) return;
-      switching = true;
+    // 点击开始：解锁播放权限（手机必须）
+    startBtn.addEventListener('click', async () => {
+      started = true;
+      startBtn.style.display = 'none';
+      hint.textContent = "Scanning… Point at a target image.";
 
-      pauseVideo();
-      current = newIndex;
-
-      hint.textContent = `Switched to ${PAIRS[current].name}. Point at the matching image.`;
-
-      // 1) 停止当前 MindAR
       try {
-        const sys = scene.systems["minda]()
+        await loadAndPlay(VIDEO_FILES[0]); // 解锁
+        pauseVideo();
+      } catch(e) {
+        showError("Cannot start video playback.\nTry Chrome/Safari.");
+      }
+    });
+
+    async function switchTo(i){
+      const now = Date.now();
+      if (now - lastSwitchAt < SWITCH_COOLDOWN_MS) return;
+      lastSwitchAt = now;
+
+      if (!started || switching) return;
+      if (activeIndex === i) return;
+
+      switching = true;
+      activeIndex = i;
+
+      hint.textContent = `Detected target ${i + 1}. Loading…`;
+
+      try {
+        await loadAndPlay(VIDEO_FILES[i]);
+        hint.textContent = `Playing target ${i + 1}.`;
+      } catch(e) {
+        showError("Video failed to play.\nIf you see a download prompt, re-encode MP4 (H.264 + faststart).");
+      } finally {
+        switching = false;
+      }
+    }
+
+    for (let i = 0; i < 10; i++){
+      const t = document.getElementById(`t${i}`);
+      t.addEventListener('targetFound', () => switchTo(i));
+      // 不强制暂停：你扫到另一张时会自动切换；丢失也不断播会更顺滑
+      t.addEventListener('targetLost', () => {});
+    }
+
+    // 切后台暂停，避免回来黑屏
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) pauseVideo();
+    });
+  </script>
+</body>
+</html>
