@@ -3,12 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WebAR 2.5D Parallax Demo</title>
+  <title>WebAR Video on Image Target</title>
 
-  <!-- three.js 全局版（不需要 import） -->
+  <!-- three.js 全局版 -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-
-  <!-- MindAR（three 版本，稳定的 1.1.4） -->
+  <!-- MindAR（稳定 1.1.4） -->
   <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.1.4/dist/mindar-image-three.prod.js"></script>
 
   <style>
@@ -33,14 +32,8 @@
       line-height: 1.4;
       text-shadow: 0 1px 3px rgba(0,0,0,.6);
     }
-    #tip{
-      margin-top:10px;
-      font-size:12px;
-      opacity:.7;
-      line-height: 1.4;
-    }
 
-    /* 扫描成功提示条 */
+    /* 顶部提示条 */
     #toast{
       position:fixed;
       left:50%;
@@ -51,30 +44,27 @@
       color:#fff;
       border-radius:12px;
       z-index:9999;
-      font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
       font-size:14px;
-      line-height:1;
       display:none;
       pointer-events:none;
-      text-shadow: 0 1px 3px rgba(0,0,0,.6);
       white-space:nowrap;
+      text-shadow: 0 1px 3px rgba(0,0,0,.6);
     }
 
-    /* 可选：调试状态（你确认能识别后可以删掉） */
-    #debug{
+    /* 如果手机端拦截播放，给一个“点我播放”按钮 */
+    #tapPlay{
       position:fixed;
-      left:12px;
-      bottom:12px;
-      padding:8px 10px;
-      background:rgba(0,0,0,.55);
-      color:#fff;
-      border-radius:10px;
+      left:50%;
+      bottom:22px;
+      transform:translateX(-50%);
       z-index:9999;
-      font-size:12px;
-      font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
-      white-space:pre-wrap;
-      opacity:.85;
-      pointer-events:none;
+      padding:12px 16px;
+      border-radius:12px;
+      border:0;
+      background:rgba(255,255,255,.92);
+      color:#111;
+      font-size:14px;
+      display:none;
     }
   </style>
 </head>
@@ -83,144 +73,144 @@
   <div id="ui">
     <button id="btn">点击开始扫描</button>
     <div id="status">状态：等待点击</div>
-    <div id="tip">
-      请对准你编译 scene.mind 时用的那张目标图（建议裁掉天空/去掉大字更稳）
-    </div>
   </div>
 
   <div id="toast"></div>
-  <div id="debug">识别状态：未开始</div>
+  <button id="tapPlay">点我播放视频</button>
 
   <script>
     const btn = document.getElementById("btn");
     const statusEl = document.getElementById("status");
     const toastEl = document.getElementById("toast");
-    const debugEl = document.getElementById("debug");
+    const tapPlayBtn = document.getElementById("tapPlay");
 
     const setStatus = (s) => { statusEl.textContent = "状态：" + s; console.log(s); };
-    const setDebug = (s) => { debugEl.textContent = s; };
 
-    // 顶部弹提示
     let toastTimer = null;
     function showToast(text, ms = 1200) {
       toastEl.textContent = text;
       toastEl.style.display = "block";
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        toastEl.style.display = "none";
-      }, ms);
+      toastTimer = setTimeout(() => toastEl.style.display = "none", ms);
     }
 
-    // 你的素材分辨率：1365 x 2048
+    // ✅ 你的目标图（做 mind 的那张）比例建议一致
+    // 如果你的视频就是按目标图做的（竖图 1365x2048），用这个比例贴合会最准：
     const IMG_W = 1365;
     const IMG_H = 2048;
-    const aspect = IMG_W / IMG_H;  // 宽/高 ≈ 0.6665
+    const aspect = IMG_W / IMG_H;
 
-    // 2.5D 平面物理宽度（单位任意，整体比例会跟着走）
+    // 平面物理尺寸
     const W = 1.0;
     const H = W / aspect;
 
-    // 全局引用（方便在动画里访问）
-    let mindarThree, renderer, scene, camera;
-    let anchor;
-    let carMesh = null;
-    let peopleMesh = null;
-
-    setStatus("页面已加载，等待点击。");
+    // 视频路径（你按需修改）
+    const VIDEO_SRC = "./assets/video.mp4";
 
     btn.onclick = async () => {
       btn.disabled = true;
       setStatus("已点击，正在启动 AR...");
-      setDebug("识别状态：启动中...");
 
       try {
-        mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        // 1) 创建 MindAR
+        const mindarThree = new window.MINDAR.IMAGE.MindARThree({
           container: document.body,
           imageTargetSrc: "./targets/scene.mind",
         });
 
-        ({ renderer, scene, camera } = mindarThree);
+        const { renderer, scene, camera } = mindarThree;
 
-        // 识别到第 0 张 target 时显示内容
-        anchor = mindarThree.addAnchor(0);
+        // 2) 创建 Anchor
+        const anchor = mindarThree.addAnchor(0);
 
-        // ✅ 扫描成功/丢失提示（你要的）
-        anchor.onTargetFound = () => {
-          console.log("✅ Found target");
-          showToast("识别成功 ✅");
-          setDebug("识别状态：✅ 已识别（target found）");
+        // 3) 创建 video 元素（关键：iOS 必须 muted + playsinline）
+        const video = document.createElement("video");
+        video.src = VIDEO_SRC;
+        video.loop = true;
+        video.muted = true;           // ✅ 必须：否则手机基本不允许自动播放
+        video.playsInline = true;     // ✅ iOS 必须
+        video.setAttribute("playsinline", "");
+        video.setAttribute("webkit-playsinline", "");
+        video.preload = "auto";
+        video.crossOrigin = "anonymous"; // 同域一般不需要，但加了更稳
+
+        // 4) three.js 视频贴图
+        const videoTexture = new THREE.VideoTexture(video);
+        videoTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const geo = new THREE.PlaneGeometry(W, H);
+        const mat = new THREE.MeshBasicMaterial({
+          map: videoTexture,
+          transparent: true,
+          depthWrite: false,
+        });
+
+        const plane = new THREE.Mesh(geo, mat);
+        anchor.group.add(plane);
+
+        // 5) 扫描成功 / 丢失提示
+        let targetVisible = false;
+
+        anchor.onTargetFound = async () => {
+          targetVisible = true;
+          showToast("识别成功 ✅ 播放视频", 900);
+
+          try {
+            await video.play();
+            tapPlayBtn.style.display = "none";
+          } catch (e) {
+            // 手机可能仍拦截（某些浏览器/设置）
+            tapPlayBtn.style.display = "block";
+            showToast("检测到拦截播放，请点底部按钮播放", 1400);
+          }
         };
+
         anchor.onTargetLost = () => {
-          console.log("⚠️ Lost target");
-          showToast("目标丢失 ⚠️", 900);
-          setDebug("识别状态：⚠️ 已丢失（target lost）");
+          targetVisible = false;
+          showToast("目标丢失 ⚠️ 暂停视频", 900);
+          video.pause();
+          // 如果你想每次重新识别都从头播放，取消注释：
+          // video.currentTime = 0;
+          tapPlayBtn.style.display = "none";
         };
 
-        const loader = new THREE.TextureLoader();
+        // 如果被拦截，给用户一次点击强制播放（用户手势 100%解锁）
+        tapPlayBtn.onclick = async () => {
+          try {
+            await video.play();
+            tapPlayBtn.style.display = "none";
+            showToast("已播放 ✅", 800);
+          } catch (e) {
+            showToast("仍无法播放，换 Chrome/Safari 试试", 1200);
+          }
+        };
 
-        // 创建一层（透明叠层）
-        function makeLayer(url, z, opts = {}) {
-          const t = loader.load(url);
-          t.colorSpace = THREE.SRGBColorSpace;
-
-          const g = new THREE.PlaneGeometry(W, H);
-          const m = new THREE.MeshBasicMaterial({
-            map: t,
-            transparent: true,
-            depthWrite: false,
-            ...opts,
-          });
-
-          const mesh = new THREE.Mesh(g, m);
-          mesh.position.z = z;
-          return mesh;
-        }
-
-        // ===== 4 层视差 =====
-        const group = new THREE.Group();
-        group.add(makeLayer("./assets/bg.png",   -0.10));
-        group.add(makeLayer("./assets/mid.png",  -0.05));
-        group.add(makeLayer("./assets/main.png",  0.00));
-        group.add(makeLayer("./assets/fg.png",    0.06));
-
-        // 如果你觉得整体偏大/偏小，在这里调 scale（0.9~1.1）
-        // group.scale.set(0.98, 0.98, 0.98);
-
-        anchor.group.add(group);
-
-        // ===== 动态层：车 =====
-        carMesh = makeLayer("./assets/cars.png", 0.02);
-        anchor.group.add(carMesh);
-
-        // ===== 动态层：人 =====
-        peopleMesh = makeLayer("./assets/people.png", 0.04);
-        anchor.group.add(peopleMesh);
-
-        // 启动 AR
+        // 6) 启动 AR
         await mindarThree.start();
-        setStatus("AR 已启动 ✅ 请对准目标图");
-        showToast("相机已启动，开始对准目标图…", 1400);
-        setDebug("识别状态：相机已启动，等待识别…");
-
+        setStatus("相机已启动 ✅ 请对准目标图");
+        showToast("相机已启动，开始对准目标图…", 1200);
         document.getElementById("ui").style.display = "none";
 
-        // ===== 动画循环 =====
-        let t = 0;
+        // 7) 预热：有些手机需要“先 play 一下再 pause”才能后续顺利播放
+        // 这一步在用户点击开始后执行，属于用户手势链路，成功率更高
+        try {
+          await video.play();
+          video.pause();
+          video.currentTime = 0;
+        } catch (e) {
+          // 不影响后续识别后手动点播放
+        }
+
+        // 8) 渲染循环
         renderer.setAnimationLoop(() => {
-          t += 0.02;
-
-          if (carMesh) carMesh.position.x = Math.sin(t * 0.6) * 0.06;
-          if (peopleMesh) peopleMesh.rotation.z = Math.sin(t) * 0.01;
-
+          // 只有识别到才播放也行（这里不强制）
           renderer.render(scene, camera);
         });
 
       } catch (err) {
         console.error(err);
         setStatus("启动失败 ❌\n" + (err?.message || err));
-        setDebug("识别状态：启动失败\n" + (err?.message || err));
         btn.disabled = false;
-        showToast("启动失败 ❌", 1500);
       }
     };
   </script>
