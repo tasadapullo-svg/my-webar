@@ -2,111 +2,230 @@
 <html>
 <head>
   <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
   <title>AR Video</title>
 
+  <!-- 建议：后面我会告诉你如何把这两个JS下载到本地，避免CDN被墙导致空白页 -->
   <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
     #startBtn{
-      position:fixed;left:50%;top:50%;
+      position:fixed; left:50%; top:50%;
       transform:translate(-50%,-50%);
-      padding:14px 18px;font-size:16px;z-index:9999;
+      padding:14px 18px; font-size:16px;
+      z-index:9999;
     }
     #hint{
-      position:fixed;left:50%;bottom:18px;
+      position:fixed; left:50%; bottom:18px;
       transform:translateX(-50%);
-      background:rgba(0,0,0,.55);color:#fff;
-      padding:8px 12px;border-radius:10px;
-      font-size:14px;z-index:9999;
+      background:rgba(0,0,0,.60); color:#fff;
+      padding:10px 14px; border-radius:10px;
+      font-size:14px; z-index:9999;
+      text-align:center;
+      max-width: 90vw;
     }
-    #dbg{
-      position:fixed;left:10px;top:10px;
-      background:rgba(0,0,0,.55);color:#fff;
-      padding:6px 8px;border-radius:8px;
-      font-size:12px;z-index:9999;
+    #err{
+      display:none;
+      position:fixed; left:50%; top:18px;
+      transform:translateX(-50%);
+      background:rgba(180,0,0,.75); color:#fff;
+      padding:10px 14px; border-radius:10px;
+      font-size:13px; z-index:10000;
+      max-width: 90vw;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 
-<body style="margin:0; overflow:hidden;">
+<body style="margin:0; overflow:hidden; background:#000;">
+  <div id="err"></div>
   <button id="startBtn">Tap to Start</button>
-  <div id="hint">Point your camera at the image — the video will play when detected.</div>
-  <div id="dbg">t=0.00</div>
+  <div id="hint">Tap to start, then point your camera at a target image.</div>
 
   <a-scene
-    mindar-image="imageTargetSrc: targets.mind;"
+    id="scene"
+    mindar-image="imageTargetSrc: targets.mind; maxTrack: 1;"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: true"
     renderer="colorManagement: true; physicallyCorrectLights: false;">
 
     <a-assets>
-      <video id="video"
-        src="video.mp4"
+      <!-- 只用一个 video，识别到哪个 target 就切换 src -->
+      <video id="arVideo"
         preload="auto"
         loop
         muted
         playsinline
         webkit-playsinline
-        crossorigin="anonymous"></video>
+        x5-playsinline
+        x5-video-player-type="h5"
+        x5-video-player-fullscreen="false"
+        crossorigin="anonymous">
+      </video>
     </a-assets>
 
-    <a-entity id="marker" mindar-image-target="targetIndex: 0">
-      <!-- 用 plane 贴 video texture（比 a-video 更稳） -->
-      <a-plane id="screen"
-        width="1"
-        height="0.56"
-        position="0 0 0"
-        rotation="0 0 0"
-        material="shader: flat; src: #video; transparent: true;">
-      </a-plane>
-    </a-entity>
-
+    <!-- 我们会用 JS 动态创建多个 target 实体 -->
     <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
   </a-scene>
 
   <script>
+    // ====== 你只需要改这里：视频文件列表（顺序要和 targets.mind 编译顺序一致） ======
+    // 你现在文件夹里是 0.mp4 ~ 9.mp4，所以我默认写 10 个
+    const VIDEO_FILES = [
+      "0.mp4","1.mp4","2.mp4","3.mp4","4.mp4",
+      "5.mp4","6.mp4","7.mp4","8.mp4","9.mp4"
+    ];
+    // 如果你只有4个，就改成：
+    // const VIDEO_FILES = ["0.mp4","1.mp4","2.mp4","3.mp4"];
+
+    const scene = document.getElementById('scene');
     const startBtn = document.getElementById('startBtn');
     const hint = document.getElementById('hint');
-    const dbg = document.getElementById('dbg');
-    const video = document.getElementById('video');
-    const marker = document.getElementById('marker');
+    const err = document.getElementById('err');
+    const video = document.getElementById('arVideo');
 
     let started = false;
+    let activeIndex = null;
+    let switching = false;
 
-    async function forcePlay() {
-      try { video.muted = true; } catch(e){}
-      try { video.currentTime = 0; } catch(e){}
-      try {
-        const p = video.play();
-        if (p && typeof p.then === 'function') await p;
-      } catch (e) {}
+    function showError(msg) {
+      err.style.display = 'block';
+      err.textContent = msg;
     }
 
-    // Debug：看 currentTime 是否增长
-    setInterval(() => {
-      dbg.textContent = `t=${(video.currentTime || 0).toFixed(2)}  ready=${video.readyState}`;
-    }, 200);
+    // 基础兼容性检测，避免“空白页”
+    if (!window.isSecureContext) {
+      showError("This page must be opened via HTTPS.\n(Use GitHub Pages HTTPS link)");
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showError("Camera is not supported in this browser.\nPlease open in Chrome/Safari.");
+    }
 
+    // 统一：暂停视频
+    function pauseVideo() {
+      try { video.pause(); } catch(e) {}
+    }
+
+    // 切换视频并播放：等待 canplay 再 play，减少黑屏/不动
+    async function loadAndPlay(src) {
+      return new Promise((resolve, reject) => {
+        const onCanPlay = async () => {
+          cleanup();
+          try {
+            video.currentTime = 0;
+          } catch(e) {}
+          try {
+            const p = video.play();
+            if (p && typeof p.then === "function") {
+              await p;
+            }
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        };
+
+        const onError = () => {
+          cleanup();
+          reject(new Error("Video load error: " + src));
+        };
+
+        function cleanup() {
+          video.removeEventListener('canplay', onCanPlay);
+          video.removeEventListener('error', onError);
+        }
+
+        video.addEventListener('canplay', onCanPlay);
+        video.addEventListener('error', onError);
+
+        // 切 src
+        video.src = src;
+        video.load();
+      });
+    }
+
+    // “解锁播放权限”：必须由用户手势触发
     startBtn.addEventListener('click', async () => {
       started = true;
       startBtn.style.display = 'none';
-      hint.textContent = 'Scanning… Point at the image.';
-      // 用用户手势解锁播放权限
-      await forcePlay();
-      video.pause();
+      hint.textContent = "Scanning… Point at a target image.";
+
+      // 解锁：先加载第一个视频并 play/pause 一下
+      try {
+        await loadAndPlay(VIDEO_FILES[0]);
+        pauseVideo();
+      } catch (e) {
+        // 有些浏览器可能会拒绝，至少给出提示
+        showError("Cannot start video playback.\nTry another browser (Chrome/Safari).");
+      }
     });
 
-    marker.addEventListener('targetFound', async () => {
-      if (!started) return;
-      hint.textContent = 'Detected! Playing…';
-      await forcePlay();
+    // 创建 target 实体（数量 = VIDEO_FILES.length）
+    function createTargets() {
+      for (let i = 0; i < VIDEO_FILES.length; i++) {
+        const target = document.createElement('a-entity');
+        target.setAttribute('mindar-image-target', `targetIndex: ${i}`);
+
+        // 用 plane 贴 video texture（比 a-video 更稳）
+        const plane = document.createElement('a-plane');
+        plane.setAttribute('width', '1');
+        plane.setAttribute('height', '0.56'); // 16:9。若你的图是竖图/不同比例，我可以帮你改
+        plane.setAttribute('material', 'shader: flat; src: #arVideo; transparent: true;');
+
+        target.appendChild(plane);
+        scene.appendChild(target);
+
+        target.addEventListener('targetFound', async () => {
+          if (!started) return;
+
+          // 锁定：已经在播某个 target 时，不要被别的 target 抢播放
+          if (activeIndex !== null && activeIndex !== i) return;
+          if (switching) return;
+
+          activeIndex = i;
+          switching = true;
+
+          hint.textContent = `Detected target ${i + 1}. Loading…`;
+
+          try {
+            await loadAndPlay(VIDEO_FILES[i]);
+            hint.textContent = `Playing target ${i + 1}.`;
+          } catch (e) {
+            showError("Video failed to play.\nIf you see a download prompt, re-encode MP4 (H.264 + faststart).");
+          } finally {
+            switching = false;
+          }
+        });
+
+        target.addEventListener('targetLost', () => {
+          if (!started) return;
+          if (activeIndex === i) {
+            pauseVideo();
+            activeIndex = null;
+            hint.textContent = "Scanning… Point at a target image.";
+          }
+        });
+      }
+    }
+
+    // 等场景加载后创建 targets，稳定一点
+    scene.addEventListener('loaded', () => {
+      createTargets();
     });
 
-    marker.addEventListener('targetLost', () => {
-      if (!started) return;
-      video.pause();
-      hint.textContent = 'Lost tracking — point at the image again.';
+    // 切到后台时暂停，避免某些手机回来后黑屏
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) pauseVideo();
+    });
+
+    // 捕获一些常见报错，避免空白无提示
+    window.addEventListener('error', (e) => {
+      // 不要太吵，只给关键提示
+      // showError("Runtime error: " + e.message);
     });
   </script>
 </body>
