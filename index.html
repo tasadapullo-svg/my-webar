@@ -51,7 +51,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,.6);
     }
 
-    /* 如果手机端拦截播放，给一个“点我播放”按钮 */
+    /* 播放按钮（用户点击后必播） */
     #tapPlay{
       position:fixed;
       left:50%;
@@ -94,8 +94,7 @@
       toastTimer = setTimeout(() => toastEl.style.display = "none", ms);
     }
 
-    // ✅ 你的目标图（做 mind 的那张）比例建议一致
-    // 如果你的视频就是按目标图做的（竖图 1365x2048），用这个比例贴合会最准：
+    // 目标图比例（与你编译 scene.mind 用的图保持一致）
     const IMG_W = 1365;
     const IMG_H = 2048;
     const aspect = IMG_W / IMG_H;
@@ -104,7 +103,7 @@
     const W = 1.0;
     const H = W / aspect;
 
-    // 视频路径（你按需修改）
+    // 视频路径（确保线上能访问：/assets/video.mp4）
     const VIDEO_SRC = "./assets/video.mp4";
 
     btn.onclick = async () => {
@@ -123,16 +122,28 @@
         // 2) 创建 Anchor
         const anchor = mindarThree.addAnchor(0);
 
-        // 3) 创建 video 元素（关键：iOS 必须 muted + playsinline）
+        // 3) 创建 video（关键：muted + playsinline）
         const video = document.createElement("video");
         video.src = VIDEO_SRC;
         video.loop = true;
-        video.muted = true;           // ✅ 必须：否则手机基本不允许自动播放
-        video.playsInline = true;     // ✅ iOS 必须
+        video.preload = "auto";
+        video.crossOrigin = "anonymous";
+
+        // ✅ 手机端兼容关键项
+        video.muted = true;
+        video.setAttribute("muted", "");
+        video.playsInline = true;
         video.setAttribute("playsinline", "");
         video.setAttribute("webkit-playsinline", "");
-        video.preload = "auto";
-        video.crossOrigin = "anonymous"; // 同域一般不需要，但加了更稳
+
+        // ✅ 挂到 DOM：部分机型更稳
+        video.style.position = "fixed";
+        video.style.left = "-9999px";
+        video.style.top = "-9999px";
+        video.style.width = "1px";
+        video.style.height = "1px";
+        document.body.appendChild(video);
+        video.load();
 
         // 4) three.js 视频贴图
         const videoTexture = new THREE.VideoTexture(video);
@@ -148,62 +159,47 @@
         const plane = new THREE.Mesh(geo, mat);
         anchor.group.add(plane);
 
-        // 5) 扫描成功 / 丢失提示
-        let targetVisible = false;
+        // ====== ✅ 核心：扫到不自动播，只出“播放按钮” ======
+        let isFound = false;
 
-        anchor.onTargetFound = async () => {
-          targetVisible = true;
-          showToast("识别成功 ✅ 播放视频", 900);
-
-          try {
-            await video.play();
-            tapPlayBtn.style.display = "none";
-          } catch (e) {
-            // 手机可能仍拦截（某些浏览器/设置）
-            tapPlayBtn.style.display = "block";
-            showToast("检测到拦截播放，请点底部按钮播放", 1400);
-          }
+        anchor.onTargetFound = () => {
+          isFound = true;
+          showToast("识别成功 ✅ 点击底部播放", 1200);
+          tapPlayBtn.style.display = "block";
         };
 
         anchor.onTargetLost = () => {
-          targetVisible = false;
-          showToast("目标丢失 ⚠️ 暂停视频", 900);
-          video.pause();
-          // 如果你想每次重新识别都从头播放，取消注释：
-          // video.currentTime = 0;
+          isFound = false;
+          showToast("目标丢失 ⚠️ 已暂停", 900);
           tapPlayBtn.style.display = "none";
+          video.pause();
+          video.currentTime = 0; // 丢失后回到开头（你不想回到开头就删掉这行）
         };
 
-        // 如果被拦截，给用户一次点击强制播放（用户手势 100%解锁）
+        // 用户点击按钮播放（用户手势 = 100%允许）
         tapPlayBtn.onclick = async () => {
+          if (!isFound) {
+            showToast("请先对准目标图再播放", 1000);
+            return;
+          }
           try {
             await video.play();
             tapPlayBtn.style.display = "none";
-            showToast("已播放 ✅", 800);
+            showToast("播放中 ▶️", 900);
           } catch (e) {
-            showToast("仍无法播放，换 Chrome/Safari 试试", 1200);
+            console.error(e);
+            showToast("无法播放：请换 Chrome/Safari 或检查设置", 1600);
           }
         };
 
-        // 6) 启动 AR
+        // 5) 启动 AR
         await mindarThree.start();
         setStatus("相机已启动 ✅ 请对准目标图");
         showToast("相机已启动，开始对准目标图…", 1200);
         document.getElementById("ui").style.display = "none";
 
-        // 7) 预热：有些手机需要“先 play 一下再 pause”才能后续顺利播放
-        // 这一步在用户点击开始后执行，属于用户手势链路，成功率更高
-        try {
-          await video.play();
-          video.pause();
-          video.currentTime = 0;
-        } catch (e) {
-          // 不影响后续识别后手动点播放
-        }
-
-        // 8) 渲染循环
+        // 6) 渲染循环
         renderer.setAnimationLoop(() => {
-          // 只有识别到才播放也行（这里不强制）
           renderer.render(scene, camera);
         });
 
@@ -211,6 +207,7 @@
         console.error(err);
         setStatus("启动失败 ❌\n" + (err?.message || err));
         btn.disabled = false;
+        showToast("启动失败 ❌", 1400);
       }
     };
   </script>
