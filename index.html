@@ -3,18 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>AR Multi Videos (Stable Switch)</title>
+  <title>AR Multi Videos (Debug)</title>
 
   <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
     #startBtn{
-      adaptation:none;
       position:fixed;left:50%;top:50%;
       transform:translate(-50%,-50%);
       padding:14px 18px;font-size:16px;z-index:9999;
-      border-radius:12px;border:0;
     }
     #hint{
       position:fixed;left:50%;bottom:18px;
@@ -45,8 +43,8 @@
     mindar-image="imageTargetSrc: targets.mind; maxTrack: 1;"
     vr-mode-ui="enabled:false"
     device-orientation-permission-ui="enabled:true"
-    renderer="colorManagement:true; physicallyCorrectLights:false;"
-  >
+    renderer="colorManagement:true; physicallyCorrectLights:false;">
+
     <a-assets>
       <video id="arVideo"
         preload="auto"
@@ -60,197 +58,143 @@
         crossorigin="anonymous"></video>
     </a-assets>
 
-    <!-- 12 targets -->
-    <a-entity id="t0"  mindar-image-target="targetIndex: 0"><a-plane id="p0"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t1"  mindar-image-target="targetIndex: 1"><a-plane id="p1"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t2"  mindar-image-target="targetIndex: 2"><a-plane id="p2"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t3"  mindar-image-target="targetIndex: 3"><a-plane id="p3"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t4"  mindar-image-target="targetIndex: 4"><a-plane id="p4"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t5"  mindar-image-target="targetIndex: 5"><a-plane id="p5"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t6"  mindar-image-target="targetIndex: 6"><a-plane id="p6"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t7"  mindar-image-target="targetIndex: 7"><a-plane id="p7"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t8"  mindar-image-target="targetIndex: 8"><a-plane id="p8"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t9"  mindar-image-target="targetIndex: 9"><a-plane id="p9"  width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t10" mindar-image-target="targetIndex: 10"><a-plane id="p10" width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
-    <a-entity id="t11" mindar-image-target="targetIndex: 11"><a-plane id="p11" width="1" height="1.5" material="shader: flat; src: #arVideo;"></a-plane></a-entity>
+    <a-entity id="t0" mindar-image-target="targetIndex: 0"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t1" mindar-image-target="targetIndex: 1"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t2" mindar-image-target="targetIndex: 2"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t3" mindar-image-target="targetIndex: 3"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t4" mindar-image-target="targetIndex: 4"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t5" mindar-image-target="targetIndex: 5"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t6" mindar-image-target="targetIndex: 6"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t7" mindar-image-target="targetIndex: 7"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t8" mindar-image-target="targetIndex: 8"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t9" mindar-image-target="targetIndex: 9"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t10" mindar-image-target="targetIndex: 10"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
+    <a-entity id="t11" mindar-image-target="targetIndex: 11"><a-plane width="1" height="1.5" material="shader: flat; src: #arVideo; transparent: true;"></a-plane></a-entity>
 
     <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
   </a-scene>
 
   <script>
-    const VIDEO_FILES = [
-      "assets/0.mp4","assets/1.mp4","assets/2.mp4","assets/3.mp4",
-      "assets/4.mp4","assets/5.mp4","assets/6.mp4","assets/7.mp4",
-      "assets/8.mp4","assets/9.mp4","assets/10.mp4","assets/11.mp4"
-    ];
+    const VIDEO_FILES = ["0.mp4","1.mp4","2.mp4","3.mp4","4.mp4","5.mp4","6.mp4","7.mp4","8.mp4","9.mp4","10.mp4","11.mp4"];
 
+    const scene = document.getElementById('scene');
     const startBtn = document.getElementById('startBtn');
     const hint = document.getElementById('hint');
     const dbg = document.getElementById('dbg');
     const video = document.getElementById('arVideo');
-
-    // 把所有 plane 存起来，方便强制刷新材质
-    const planes = [];
-    for (let i=0;i<12;i++) planes.push(document.getElementById(`p${i}`));
 
     let started = false;
     let activeIndex = null;
     let switching = false;
     let foundCount = 0;
 
-    // 更强防抖：必须稳定识别一段时间才切换
-    let pendingIndex = null;
-    let pendingTimer = null;
-    const STABLE_MS = 250;           // 识别稳定 250ms 才切
-    const SWITCH_COOLDOWN_MS = 1200; // 切换冷却
     let lastSwitchAt = 0;
+    const SWITCH_COOLDOWN_MS = 800;
 
-    function log(line){ dbg.textContent = line; }
-    function baseName(url){ try { return url.split('/').pop(); } catch(e){ return url; } }
-
-    function refreshMaterial(){
-      // A-Frame 有时不会立刻更新 video src，这里强制 material 重新绑定
-      planes.forEach(p => {
-        try {
-          const m = p.getAttribute('material');
-          // 重新 set 一次 material，触发更新
-          p.setAttribute('material', { ...m, src: '#arVideo' });
-        } catch(e) {}
-      });
+    function log(line){
+      dbg.textContent = line;
     }
 
-    function pauseVideo(){
-      try{ video.pause(); }catch(e){}
-    }
+    function pauseVideo(){ try{ video.pause(); }catch(e){} }
 
-    function loadAndPlay(src){
+    async function loadAndPlay(src){
       return new Promise((resolve, reject) => {
-        let done = false;
-
-        const cleanup = () => {
-          video.removeEventListener('loadeddata', onReady);
-          video.removeEventListener('canplaythrough', onReady);
-          video.removeEventListener('error', onError);
-          clearTimeout(timeout);
-        };
-
-        const onReady = async () => {
-          if (done) return;
-          done = true;
+        const onCanPlay = async () => {
           cleanup();
           try { video.currentTime = 0; } catch(e) {}
-          refreshMaterial();
           try {
             const p = video.play();
             if (p && typeof p.then === "function") await p;
             resolve();
           } catch(e) { reject(e); }
         };
+        const onError = () => { cleanup(); reject(new Error("Video load error: " + src)); };
 
-        const onError = () => {
-          if (done) return;
-          done = true;
-          cleanup();
-          reject(new Error("Video load error: " + src));
-        };
+        function cleanup(){
+          video.removeEventListener('canplay', onCanPlay);
+          video.removeEventListener('error', onError);
+        }
 
-        // 超时兜底（避免卡死）
-        const timeout = setTimeout(() => {
-          if (done) return;
-          done = true;
-          cleanup();
-          reject(new Error("Video load timeout: " + src));
-        }, 7000);
+        video.addEventListener('canplay', onCanPlay);
+        video.addEventListener('error', onError);
 
-        video.addEventListener('loadeddata', onReady, {once:true});
-        video.addEventListener('canplaythrough', onReady, {once:true});
-        video.addEventListener('error', onError, {once:true});
-
-        // 切换 src
-        video.src = src + "?v=" + Date.now(); // 强制绕缓存
+        video.src = src;
         video.load();
       });
     }
 
-    // 解锁播放权限（必须在用户手势里）
-    async function unlockVideo(){
+    // 检查 targets.mind 是否真的能加载
+    async function checkTargetsMind(){
       try{
-        await loadAndPlay(VIDEO_FILES[0]);
-        pauseVideo();
-        try{ video.currentTime = 0; }catch(e){}
-        hint.textContent = "Scanning… (video unlocked)";
+        const r = await fetch("targets.mind", {cache:"no-store"});
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const buf = await r.arrayBuffer();
+        return buf.byteLength;
       }catch(e){
-        hint.textContent = "Video unlock failed. Try Chrome/Safari.";
+        return null;
       }
     }
 
-    async function switchTo(i){
-      const now = Date.now();
-      if (now - lastSwitchAt < SWITCH_COOLDOWN_MS) return;
-      if (!started || switching) return;
-      if (activeIndex === i) return;
-
-      switching = true;
-      activeIndex = i;
-      lastSwitchAt = now;
-
-      const src = VIDEO_FILES[i];
-      hint.textContent = `FOUND targetIndex=${i}. Loading ${baseName(src)}…`;
-
-      try{
-        await loadAndPlay(src);
-        hint.textContent = `Playing targetIndex=${i} (${baseName(src)}) ✅`;
-      }catch(e){
-        hint.textContent = `Play failed for ${baseName(src)} ❌`;
-      }finally{
-        switching = false;
-      }
-    }
-
-    function onTargetFound(i){
-      foundCount++;
+    scene.addEventListener('loaded', async () => {
+      const size = await checkTargetsMind();
       log(
-`tracking…
-foundCount: ${foundCount}
-lastFound: targetIndex=${i}
-activeIndex: ${activeIndex}
-video: ${video.currentSrc ? baseName(video.currentSrc) : "(none)"}
-videoTime: ${(video.currentTime||0).toFixed(2)}
-readyState: ${video.readyState}`
+`page loaded
+HTTPS: ${location.protocol}
+targets.mind bytes: ${size ?? "FAILED (404/blocked)"}
+tap Start to begin`
       );
-
-      // 稳定识别后再切（解决抖动导致的“前一个”）
-      pendingIndex = i;
-      clearTimeout(pendingTimer);
-      pendingTimer = setTimeout(() => {
-        if (pendingIndex === i) switchTo(i);
-      }, STABLE_MS);
-    }
-
-    // Start 按钮（touchstart 更稳）
-    startBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      startBtn.click();
-    }, {passive:false});
+    });
 
     startBtn.addEventListener('click', async () => {
       started = true;
       startBtn.style.display = 'none';
       hint.textContent = "Scanning… Point at a target image.";
-      await unlockVideo();
+
+      try {
+        await loadAndPlay(VIDEO_FILES[0]); // 解锁
+        pauseVideo();
+      } catch(e) {
+        hint.textContent = "Video unlock failed. Try Chrome/Safari.";
+      }
     });
 
-    // 绑定 12 个 targetFound / targetLost
+    async function switchTo(i){
+      const now = Date.now();
+      if (now - lastSwitchAt < SWITCH_COOLDOWN_MS) return;
+      lastSwitchAt = now;
+
+      if (!started || switching) return;
+      if (activeIndex === i) return;
+
+      switching = true;
+      activeIndex = i;
+
+      hint.textContent = `FOUND target ${i+1}. Loading video…`;
+
+      try {
+        await loadAndPlay(VIDEO_FILES[i]);
+        hint.textContent = `Playing target ${i+1} (${VIDEO_FILES[i]})`;
+      } catch(e) {
+        hint.textContent = `Play failed for ${VIDEO_FILES[i]}`;
+      } finally {
+        switching = false;
+      }
+    }
+
     for (let i=0;i<12;i++){
       const t = document.getElementById(`t${i}`);
-      t.addEventListener('targetFound', () => onTargetFound(i));
-      t.addEventListener('targetLost', () => {
-        // 丢失当前 target 就暂停，避免黑屏/卡在上一段
-        if (activeIndex === i) {
-          pauseVideo();
-          try{ video.currentTime = 0; }catch(e){}
-          hint.textContent = `Lost targetIndex=${i}.`;
-        }
+      t.addEventListener('targetFound', () => {
+        foundCount++;
+        log(
+`tracking…
+foundCount: ${foundCount}
+lastFound: targetIndex=${i}
+activeIndex: ${activeIndex}
+video: ${video.currentSrc ? video.currentSrc.split('/').slice(-1)[0] : "(none)"}
+videoTime: ${(video.currentTime||0).toFixed(2)}
+readyState: ${video.readyState}`
+        );
+        switchTo(i);
       });
     }
 
